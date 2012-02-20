@@ -46,13 +46,22 @@ Mike Eldridge <diz@cpan.org>
 
 =cut
 
+=head1 CONTRIBUTORS
+
+Devin Austin <dhoss@cpan.org>
+
+=cut
+
 use Directory::Scratch;
 use SQL::Translator;
 use SQL::Translator::Diff;
 use SQL::Translator::Schema::Constants;
 use Getopt::Attribute;
+use POSIX qw(strftime);
 
-our $db : Getopt(db=s MySQL);
+our $db : Getopt(db=s SQLite);
+our $write_to_dir : Getopt(write=s);
+
 
 my $schema = shift;
 my $source = shift;
@@ -173,7 +182,6 @@ $new->translate("$scratch/$file-NEW-$db.sql");
 
 $old->schema->name($source);
 $new->schema->name($target || 'index');
-
 my $opts =
 {
 	caseopt						=> 0,
@@ -191,5 +199,21 @@ my $diff = SQL::Translator::Diff::schema_diff($old->schema, $db, $new->schema, $
 
 print "done\n\n";
 
+write_sql_to_directory($write_to_dir) if $write_to_dir;
+
 print $diff;
+
+sub write_sql_to_directory {
+  my $dir = shift;
+  $target ||= 'index';
+  my $file = "$dir/$source-$target"; 
+  $file .= ".sql";
+  print "Writing SQL to $file...\n";
+  open my $fh, ">", $file 
+    || die "Can't open $file: $!";
+
+  print $fh $diff;
+  close $fh;
+  print "Done!\n";
+}
 
